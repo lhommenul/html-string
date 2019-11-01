@@ -1,7 +1,5 @@
 const siteUrl = "https://www.filmstreaming.plus/";
 const axios = require("axios");
-const express = require('express');
-const app = express();
 function data(){
     return `<!DOCTYPE html>
     <html xmlns:fb="http://ogp.me/ns/fb#" lang="fr-FR">
@@ -453,10 +451,6 @@ function data(){
     </body>
     </html>  `
 }
-
-var obj_html = [];
-
-app.get('/',(req,res)=>{
     // yes()
     // async function yes(){
     //   const result = await axios.get(siteUrl);
@@ -467,7 +461,6 @@ app.get('/',(req,res)=>{
     console.log(foundClass(resu,'filmborder moviefilm'));
     
     res.send(data())
-})
 
 function foundTags(string_html) {
     var done = false, from = null,obj = [];
@@ -578,6 +571,4 @@ function foundClass(data,classes = String){
     }
     return found();
 }
-app.listen(3000)
-// exemple selector
 
