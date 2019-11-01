@@ -460,7 +460,6 @@ function data(){
     var resu = foundTags(data())
     console.log(foundClass(resu,'filmborder moviefilm'));
     
-    res.send(data())
 
 function foundTags(string_html) {
     var done = false, from = null,obj = [];
