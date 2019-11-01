@@ -458,10 +458,10 @@ function data(){
     // };   
     
     var resu = foundTags(data())
-    console.log(foundClass(resu,'filmborder moviefilm'));
+    console.log(foundId(resu,'wrap'));
     
 
-function foundTags(string_html) {
+function foundTags(string_html = String) {
     var done = false, from = null,obj = [];
     while (done == false) tagFinder(string_html);
     function tagFinder(string_html) {
@@ -570,4 +570,30 @@ function foundClass(data,classes = String){
     }
     return found();
 }
+function foundId(data,id = String){
+    var ids = [];    
+    check(id)
+    function check(params) {
+        var size = params.split(' ');
+        for (let index = 0; index < size.length; index++) {
+            const element = size[index];
+            ids.push(element)
+        }
+    }
+    function found() {        
+        var result = [];
+        for (let index = 0; index < ids.length; index++) {
+            const element = ids[index];
+            for (let compteur = 0; compteur < data.length; compteur++) {
+                const elem = data[compteur].id;
+                if (element == elem) {
+                    result.push(data[compteur])
+                }
+            }
+        }
+        return result;
+    }
+    return found();
+}
+
 
