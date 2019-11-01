@@ -456,144 +456,152 @@ function data(){
     //   const result = await axios.get(siteUrl);
     //   res.send(result.data);
     // };   
-    
-    var resu = foundTags(data())
-    console.log(foundId(resu,'wrap'));
-    
-
-function foundTags(string_html = String) {
-    var done = false, from = null,obj = [];
-    while (done == false) tagFinder(string_html);
-    function tagFinder(string_html) {
-        if (from == null) {
-            // debut du tag        
-            var first = string_html.indexOf('<'), last = string_html.indexOf('>',first);
-            // fin du tag        
-            obj.push({
-                start:first,
-                end:last,
-                tag:string_html.slice(first,last+1)
-            })
-            from = last;            
-        }else{
-            // debut du tag
-            var first = string_html.indexOf('<',from), last = string_html.indexOf('>',first)
-            if (first == -1){ done = true}
-            else{
+    // var resu = foundTags(data())
+    // console.log(foundId(resu,'wrap')); 
+class htmlString{
+    constructor(string_html){
+        this.string_html = string_html;
+        this.html_obj = this.start(string_html);
+    }
+    // Generate the obj width all the tags inside
+    start(string_html = String) {
+        var done = false, from = null,obj = [];
+        while (done == false) tagFinder(string_html);
+        function tagFinder(string_html) {
+            if (from == null) {
+                // debut du tag        
+                var first = string_html.indexOf('<'), last = string_html.indexOf('>',first);
+                // fin du tag        
                 obj.push({
                     start:first,
                     end:last,
                     tag:string_html.slice(first,last+1)
                 })
-                from = last;
+                from = last;            
+            }else{
+                // debut du tag
+                var first = string_html.indexOf('<',from), last = string_html.indexOf('>',first)
+                if (first == -1){ done = true}
+                else{
+                    obj.push({
+                        start:first,
+                        end:last,
+                        tag:string_html.slice(first,last+1)
+                    })
+                    from = last;
+                }
+                // fin du tag
             }
-            // fin du tag
         }
+        for (let index = 0; index < obj.length; index++) {
+            const element = obj[index].tag;
+            var src = element.indexOf('src='), href = element.indexOf('href='),name = element.indexOf('name='),id = element.indexOf('id='),class_name =  element.indexOf('class=');
+            if (class_name != -1) {
+                // console.log(obj[index].tag);                     
+                var starter = obj[index].tag.indexOf('"',class_name), ending = obj[index].tag.indexOf('"',starter+1);
+                if (starter == -1) {
+                    starter = obj[index].tag.indexOf("'",class_name)
+                    ending = obj[index].tag.indexOf("'",starter+1);
+                }            
+                var result = obj[index].tag.slice(starter+1,ending);
+                obj[index].class_name = result.split(" ");
+                        
+            }
+            if (id != -1) {
+                var starter = obj[index].tag.indexOf('"',id), ending = obj[index].tag.indexOf('"',starter+1);
+                if (starter == -1) {
+                    starter = obj[index].tag.indexOf("'",id)
+                    ending = obj[index].tag.indexOf("'",starter+1);
+                }            
+                var result = obj[index].tag.slice(starter+1,ending);   
+                obj[index].id = result.split(" ");   
+            }
+            if (name != -1) {
+                var starter = obj[index].tag.indexOf('"',name), ending = obj[index].tag.indexOf('"',starter+1);
+                if (starter == -1) {
+                    starter = obj[index].tag.indexOf("'",name)
+                    ending = obj[index].tag.indexOf("'",starter+1);
+                }            
+                var result = obj[index].tag.slice(starter+1,ending);
+                name = result.split(" ");                 
+                obj[index].name = result.split(" ");
+            }    
+            if (src != -1) {
+                var starter = obj[index].tag.indexOf('"',src), ending = obj[index].tag.indexOf('"',starter+1);
+                if (starter == -1) {
+                    starter = obj[index].tag.indexOf("'",src)
+                    ending = obj[index].tag.indexOf("'",starter+1);
+                }            
+                var result = obj[index].tag.slice(starter+1,ending);
+                src = result.split(" ");                                  
+                obj[index].src = result.split(" ");
+            }
+            if (href != -1) {
+                var starter = obj[index].tag.indexOf('"',href), ending = obj[index].tag.indexOf('"',starter+1);
+                if (starter == -1) {
+                    starter = obj[index].tag.indexOf("'",href)
+                    ending = obj[index].tag.indexOf("'",starter+1);
+                }            
+                var result = obj[index].tag.slice(starter+1,ending);
+                obj[index].href = result.split(" ");
+            }               
+        }
+        return obj;
+    }    
+    getHtmlObj(){
+        return this.html_obj;
     }
-    for (let index = 0; index < obj.length; index++) {
-        const element = obj[index].tag;
-        var src = element.indexOf('src='), href = element.indexOf('href='),name = element.indexOf('name='),id = element.indexOf('id='),class_name =  element.indexOf('class=');
-        if (class_name != -1) {
-            // console.log(obj[index].tag);                     
-            var starter = obj[index].tag.indexOf('"',class_name), ending = obj[index].tag.indexOf('"',starter+1);
-            if (starter == -1) {
-                starter = obj[index].tag.indexOf("'",class_name)
-                ending = obj[index].tag.indexOf("'",starter+1);
-            }            
-            var result = obj[index].tag.slice(starter+1,ending);
-            obj[index].class_name = result.split(" ");
-                    
+    foundClass(classes = String){
+        var classe = [], data = this.html_obj        
+        check(classes)
+        function check(params) {
+            var size = params.split(' ');
+            for (let index = 0; index < size.length; index++) {
+                const element = size[index];
+                classe.push(element)
+            }
         }
-        if (id != -1) {
-            var starter = obj[index].tag.indexOf('"',id), ending = obj[index].tag.indexOf('"',starter+1);
-            if (starter == -1) {
-                starter = obj[index].tag.indexOf("'",id)
-                ending = obj[index].tag.indexOf("'",starter+1);
-            }            
-            var result = obj[index].tag.slice(starter+1,ending);   
-            obj[index].id = result.split(" ");   
-        }
-        if (name != -1) {
-            var starter = obj[index].tag.indexOf('"',name), ending = obj[index].tag.indexOf('"',starter+1);
-            if (starter == -1) {
-                starter = obj[index].tag.indexOf("'",name)
-                ending = obj[index].tag.indexOf("'",starter+1);
-            }            
-            var result = obj[index].tag.slice(starter+1,ending);
-            name = result.split(" ");                 
-            obj[index].name = result.split(" ");
-        }    
-        if (src != -1) {
-            var starter = obj[index].tag.indexOf('"',src), ending = obj[index].tag.indexOf('"',starter+1);
-            if (starter == -1) {
-                starter = obj[index].tag.indexOf("'",src)
-                ending = obj[index].tag.indexOf("'",starter+1);
-            }            
-            var result = obj[index].tag.slice(starter+1,ending);
-            src = result.split(" ");                                  
-            obj[index].src = result.split(" ");
-        }
-        if (href != -1) {
-            var starter = obj[index].tag.indexOf('"',href), ending = obj[index].tag.indexOf('"',starter+1);
-            if (starter == -1) {
-                starter = obj[index].tag.indexOf("'",href)
-                ending = obj[index].tag.indexOf("'",starter+1);
-            }            
-            var result = obj[index].tag.slice(starter+1,ending);
-            obj[index].href = result.split(" ");
-        }               
-    }
-    return obj;
-}
-function foundClass(data,classes = String){
-    var classe = [];    
-    check(classes)
-    function check(params) {
-        var size = params.split(' ');
-        for (let index = 0; index < size.length; index++) {
-            const element = size[index];
-            classe.push(element)
-        }
-    }
-    function found() {        
-        var result = [];
-        for (let index = 0; index < classe.length; index++) {
-            const element = classe[index];
-            for (let compteur = 0; compteur < data.length; compteur++) {
-                const elem = data[compteur].class_name;
-                if (element == elem) {
-                    result.push(data[compteur])
+        function found() {        
+            var result = [];
+            for (let index = 0; index < classe.length; index++) {
+                const element = classe[index];
+                for (let compteur = 0; compteur < data.length; compteur++) {
+                    const elem = data[compteur].class_name;
+                    if (element == elem) {
+                        result.push(data[compteur])
+                    }
                 }
             }
+            return result;
         }
-        return result;
+        return found();
     }
-    return found();
-}
-function foundId(data,id = String){
-    var ids = [];    
-    check(id)
-    function check(params) {
-        var size = params.split(' ');
-        for (let index = 0; index < size.length; index++) {
-            const element = size[index];
-            ids.push(element)
-        }
-    }
-    function found() {        
-        var result = [];
-        for (let index = 0; index < ids.length; index++) {
-            const element = ids[index];
-            for (let compteur = 0; compteur < data.length; compteur++) {
-                const elem = data[compteur].id;
-                if (element == elem) {
-                    result.push(data[compteur])
-                }
+    foundId(id = String){
+        var ids = [], data = this.html_obj        
+        check(id)
+        function check(params) {
+            var size = params.split(' ');
+            for (let index = 0; index < size.length; index++) {
+                const element = size[index];
+                ids.push(element)
             }
         }
-        return result;
+        function found() {        
+            var result = [];
+            for (let index = 0; index < ids.length; index++) {
+                const element = ids[index];
+                for (let compteur = 0; compteur < data.length; compteur++) {
+                    const elem = data[compteur].id;
+                    if (element == elem) {
+                        result.push(data[compteur])
+                    }
+                }
+            }
+            return result;
+        }
+        return found();
     }
-    return found();
 }
 
 
+console.log(new htmlString(data()).foundClass('topnavbarleft'));
