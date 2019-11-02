@@ -475,6 +475,7 @@ class htmlString{
                 obj.push({
                     start:first,
                     end:last,
+                    tag_name:tagType(first,last,string_html),
                     tag:string_html.slice(first,last+1)
                 })
                 from = last;            
@@ -486,11 +487,33 @@ class htmlString{
                     obj.push({
                         start:first,
                         end:last,
+                        tag_name:tagType(first,last,string_html),
                         tag:string_html.slice(first,last+1)
                     })
                     from = last;
                 }
                 // fin du tag
+            }
+            function tagType(index,last,string_html) {
+                var compteur = index;                
+                if (string_html.slice(compteur+1,compteur+2) != '/') {                    
+                    if (string_html.slice(compteur+1,compteur+2) == '!') {
+                        return {
+                            tag:string_html.slice(index+2,last).split(" ")[0],
+                            open_tag:false,
+                        }                        
+                    }else{
+                        return {
+                            tag:string_html.slice(index+1,last).split(" ")[0],
+                            open_tag:true,
+                        }
+                    }
+                }else{
+                    return {
+                        tag:string_html.slice(index+2,last).split(" ")[0],
+                        open_tag:false,
+                    }
+                }
             }
         }
         for (let index = 0; index < obj.length; index++) {
@@ -548,6 +571,11 @@ class htmlString{
         }
         return obj;
     }    
+    generateChildrens(){
+        var html_obj = this.html_obj;     
+        console.log(html_obj);
+        
+    }
     getHtmlObj(){
         return this.html_obj;
     }
@@ -604,4 +632,5 @@ class htmlString{
 }
 
 
-console.log(new htmlString(data()).foundClass('topnavbarleft'));
+var doc = new htmlString(data());
+doc.generateChildrens()
