@@ -498,21 +498,33 @@ class htmlString{
                 var compteur = index;                
                 if (string_html.slice(compteur+1,compteur+2) != '/') {                    
                     if (string_html.slice(compteur+1,compteur+2) == '!') {
-                        return {
+                        return { 
                             tag:string_html.slice(index+2,last).split(" ")[0],
                             open_tag:false,
+                            self_closing:false
                         }                        
                     }else{
                         return {
                             tag:string_html.slice(index+1,last).split(" ")[0],
                             open_tag:true,
+                            self_closing:false
                         }
                     }
                 }else{
-                    return {
-                        tag:string_html.slice(index+2,last).split(" ")[0],
-                        open_tag:false,
+                    if (string_html.slice(string_html.indexOf('>',last)-2,string_html.indexOf('>',last)-1) == '/') {
+                        return {
+                            tag:string_html.slice(index+2,last).split(" ")[0],
+                            open_tag:false,
+                            self_closing:true
+                        }                        
+                    }else{
+                        return {
+                            tag:string_html.slice(index+2,last).split(" ")[0],
+                            open_tag:false,
+                            self_closing:false
+                        }
                     }
+                    
                 }
             }
         }
@@ -573,8 +585,7 @@ class htmlString{
     }    
     generateChildrens(){
         var html_obj = this.html_obj;     
-        console.log(html_obj);
-        
+        return html_obj;
     }
     getHtmlObj(){
         return this.html_obj;
@@ -631,6 +642,4 @@ class htmlString{
     }
 }
 
-
 var doc = new htmlString(data());
-// doc.generateChildrens()
