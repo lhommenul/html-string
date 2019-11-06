@@ -462,6 +462,7 @@ class htmlString{
     constructor(string_html){
         this.string_html = string_html;
         this.html_obj = this.start(string_html);
+        this.object = this.generateChildrens();
     }
     // Generate the obj width all the tags inside
     start(string_html = String) {
@@ -476,7 +477,9 @@ class htmlString{
                     start:first,
                     end:last,
                     tag_name:tagType(first,last,string_html),
-                    tag:string_html.slice(first,last+1)
+                    tag:string_html.slice(first,last+1),
+                    self_closing:selfClosing(tagType(first,last,string_html).tag),
+                    childrens:[]
                 })
                 from = last;            
             }else{
@@ -488,11 +491,73 @@ class htmlString{
                         start:first,
                         end:last,
                         tag_name:tagType(first,last,string_html),
-                        tag:string_html.slice(first,last+1)
+                        tag:string_html.slice(first,last+1),
+                        self_closing:selfClosing(tagType(first,last,string_html).tag),
+                        childrens:[]
                     })
                     from = last;
                 }
                 // fin du tag
+            }
+            function selfClosing(params) {
+                switch (params) {
+                    case 'DOCTYPE':
+
+                        return true;
+                    case 'area':
+                        
+                        return true;
+                    case 'base':
+                    
+                        return true;
+                    case 'br':
+                    
+                        return true;
+                    case 'col':
+                    
+                        return true;
+                    case 'command':
+                    
+                        return true;
+                    case 'embed':
+                    
+                        return true;
+                    case 'area':
+                    
+                        return true;     
+                    case 'hr':
+
+                            return true;
+                    case 'img':
+    
+                        return true;
+                    case 'input':
+    
+                        return true;
+                    case 'keygen':
+    
+                        return true;
+                    case 'link':
+    
+                        return true;
+                    case 'meta':
+    
+                        return true;
+                    case 'param':
+    
+                        return true;
+                    case 'source':
+    
+                        return true;
+                    case 'track':
+    
+                        return true;
+                    case 'wbr':
+    
+                        return true;                                                                                                                                                           
+                    default:
+                        return false;
+                }
             }
             function tagType(index,last,string_html) {
                 var compteur = index;                
@@ -500,29 +565,20 @@ class htmlString{
                     if (string_html.slice(compteur+1,compteur+2) == '!') {
                         return { 
                             tag:string_html.slice(index+2,last).split(" ")[0],
-                            open_tag:false,
-                            self_closing:false
+                            open_tag:false,                        
                         }                        
-                    }else{
+                    }else{                        
                         return {
                             tag:string_html.slice(index+1,last).split(" ")[0],
-                            open_tag:true,
-                            self_closing:false
+                            open_tag:true,                            
                         }
                     }
                 }else{
-                    if (string_html.slice(string_html.indexOf('>',last)-2,string_html.indexOf('>',last)-1) == '/') {
+                    // Je dois trouver comment faire la difference entre un tag SelfClosing et un tag ferment 
+                    
                         return {
                             tag:string_html.slice(index+2,last).split(" ")[0],
-                            open_tag:false,
-                            self_closing:true
-                        }                        
-                    }else{
-                        return {
-                            tag:string_html.slice(index+2,last).split(" ")[0],
-                            open_tag:false,
-                            self_closing:false
-                        }
+                            open_tag:false,                            
                     }
                     
                 }
@@ -581,11 +637,50 @@ class htmlString{
                 obj[index].href = result.split(" ");
             }               
         }
-        return obj;
-    }    
+        return obj; 
+    }   
     generateChildrens(){
-        var html_obj = this.html_obj;     
-        return html_obj;
+        var container = [],compteur = 0;
+        for (let index = 0; index < this.html_obj.length; index++) {
+            const element = this.html_obj[index];
+            if (container[compteur] == undefined) {                
+                container[compteur] = element;
+            }else{
+                // Si pas undefined alors il y a deja un element donc
+                // console.log(`start = ${this.html_obj[index].tag}`);
+                // console.log(element.tag);
+                
+                if (container[compteur].tag == element.tag) {
+                    container[compteur].childrens.push(element)
+                    compteur++;
+                    container[compteur] = element;          
+                    // console.log('add layer');
+                              
+                }else if(`</${container[compteur].tag}>` == element.tag){
+                    // console.log('closing');
+                    compteur++;
+                    this.html_obj[index] = '';
+                }else{                    
+                    // -> donc soit j'ajoute l'element car self_closing = true
+                    if (element.self_closing == true) {
+                        // console.log('push element into the container');
+                        container[compteur].childrens.push(element)
+                    }
+                        // -> ou j'ajoute l'element car self_closing = false et ajouter compteur ++ et l'ajouter a container                 
+                    else if (element.self_closing == false){
+                        // console.log('push element into the container and add a layer');
+                        if (element.tag_name.open_tag == false) {
+                            // compteur++;
+                        }else{
+                            container[compteur].childrens.push(element)
+                            compteur++;
+                            container[compteur] = element;
+                        }
+                    }
+                }
+            }
+        }
+        return container;
     }
     getHtmlObj(){
         return this.html_obj;
@@ -640,6 +735,32 @@ class htmlString{
         }
         return found();
     }
+    foundTag(tag = String){
+        var split = tag.split(' '), container = {}
+        for (let index = 0; index < split.length; index++) {
+            const red = split[index];
+            var count = 0, cot = [];
+            for (let compteur = 0; compteur < this.html_obj.length; compteur++) {
+                const element = this.html_obj[compteur];                
+                if (red == element.tag_name.tag) {
+                    cot.push(element);
+                    count++;
+                }
+            }
+            container.result = {
+                searched:red,
+                data:cot
+            };
+        }
+        return container;
+    }
 }
 
 var doc = new htmlString(data());
+console.log(doc.foundTag('body'));
+
+// console.log(doc);
+
+
+
+
