@@ -1,44 +1,18 @@
 # html-string
-Pass an html document as a string and then use function to get class, id, text ... informations about the html tag wanted
-<== For Example: 
-var html_string = `<html> ... </html>` // Your htmldocument as a String
+You have an html document and you dont know how to transform it to an object to get specific data ?
+================ CHECK THIS OUT ================
+const html_scraping = require('html-scraping');
+--> then every time you want to convert an html string to an object :
+var result = new html_scraping('<html>'Your HTML document'</html>')
+--> you can use some methods to get specific data :
 
-var html = new htmlString(html_string); <= Create an instance and pass the html_string as a parameter
-// to see the html object you can use .getHtmlObj()
-html.getHtmlObj() // it will return and array of objects with all tags and information about it
-  -> exemple : [
-      { start: 7117,
-    end: 7121,
-    tag_name: { tag: 'li', open_tag: false },
-    tag: '</li>' },
-  { start: 7159,
-    end: 7263,
-    tag_name: { tag: 'li', open_tag: true },
-    tag:
-     '<li id="menu-item-151" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-151">',
-    class_name:
-     [ 'menu-item',
-       'menu-item-type-taxonomy',
-       'menu-item-object-category',
-       'menu-item-151' ],
-    id: [ 'menu-item-151' ] },
-  { start: 7264,
-    end: 7323,
-    tag_name: { tag: 'a', open_tag: true },
-    tag:
-     '<a href="https://www.filmstreaming.plus/films/comedie.html">',
-    href: [ 'https://www.filmstreaming.plus/films/comedie.html' ] },
-  { start: 7331,
-    end: 7334,
-    tag_name: { tag: 'a', open_tag: false },
-    tag: '</a>' },
-  ]
-// to search a particular Class or ID you can use the methods .foundClass() or .foundId()
-// ===> FOUND A PARTICULAR TAG WITH AN CLASS
-var class_searched = 'name_of_the_class an_other';
-html.foundClass(class_searched)
-  -> will return an array of object
-// ===> FOUND A PARTICULAR TAG WITH AN ID
-var id_searched = 'id_searched an_other';
-html.foundId(class_searched)
-  -> will return an array of object
+* You can log the result to see you html_string splitted in pieces  
+
+1. Get elements by there className :
+  - result.foundClass('classname classname classname classname'); <=> return an array of elements witch match
+
+2. Get elements by there Id :
+  - result.foundId('id id id id'); <=> return an array of elements witch match
+
+3. Get elements by there tagName :
+  - result.foundTag('tag tag tag tag'); <=> return an array of elements witch match  
