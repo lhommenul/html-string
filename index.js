@@ -177,6 +177,9 @@ class htmlString{
         }
         return obj; 
     }   
+    // !! Prevoir des modifications
+    // => Generate childrens with the list html_string
+        // -> to modify 
     generateChildrens(){
         var container = [],compteur = 0;
         for (let index = 0; index < this.html_obj.length; index++) {
@@ -300,9 +303,28 @@ class htmlString{
         return container;
     }
 }  
+class Object{
+    constructor(){
+        this.tag_name = null // <= exemple 'div , img , a , ul ,table ...'
+        this.tag_info = {
+            open : {
+                position_start : null, // <= '<', exemple position_start = 10 of the opening tag 
+                position_end : null // <= '>', exemple position_end = 13 of the opening tag 
+            },
+            close : {
+                position_start : 20, // <= '>', exemple position_start = 13 of the closing tag 
+                position_end : 23 // <= '>', exemple position_end = 13 of the closing tag 
+            },
+            self_closing : false, // <= if the tag as only one balise or not
+
+        }
+        this.tag_data = [] // <= src , href , name ... etc
+        this.children = [] // <= every children witch he got 
+    }
+}
 module.exports = htmlString;
 
 
 // Test String Html  
 var a = new htmlString('<html>data html<div>data div</div></html>')
-
+console.log(a);
