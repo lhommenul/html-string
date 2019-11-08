@@ -9,8 +9,11 @@ app.get('/',(req,res)=>{
     axios.get(siteUrl)
     .then(function (re) {
         // handle success
+        // console.log(re);
+        
         var a = new htmlString(re.data)
-        console.log(a);
+        console.log(a.object);
+        res.send(JSON.stringify(a.object))
       })
       .catch(function (error) {
         // handle error
@@ -19,4 +22,4 @@ app.get('/',(req,res)=>{
     // send data
 })
 
-app.listen(3000);
+app.listen(8080);
