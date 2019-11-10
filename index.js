@@ -7,9 +7,8 @@ const y = require('./test.js')
 
 class htmlString{
     constructor(html_string = String){
-        this.tag_container = [];
-        this.htmlSplitter(html_string);
-        this.tagNameFounder()
+        this.tag_container = this.htmlSplitter(html_string);
+        this.tagNameFounder();
     }
     // Cut every single pieces of the html doc 
     htmlSplitter(html){
@@ -40,7 +39,8 @@ class htmlString{
                 restart(tagNameFounder,tagNameClearFounder,tagInfoFounder,whatIsMyTag,tagDataFounder);
             }
         }
-        this.tag_container = container;
+        this.tagChildrenFounder(container)
+        return container;
     }
     tagNameFounder(tag){
         if (tag == undefined)  return 
@@ -91,7 +91,45 @@ class htmlString{
             return container;
         }
     }
-    tagChildrenFounder(){
+    tagChildrenFounder(html_obj){
+        var container = [], compteur = 0, elem_count = 0;
+        for (let index = 0; index < html_obj.length; index++) {
+            const element = html_obj[index];
+            // console.log(element);
+            if (container[compteur] != undefined) {
+                if ('</'+container[compteur].tag_name.split('<')[1] == element.tag_name) {
+                    container[compteur].tag_info.close.position_start = element.tag_info.open.position_start
+                    container[compteur].tag_info.close.position_end = element.tag_info.open.position_end
+                    compteur++;
+                }else{
+                    container[compteur].children.push(element)
+                    compteur++;
+                    container[compteur] = element;
+                }
+            } else {
+                container[compteur] = element;
+                if (element.tag_info.self_closing == true) {
+                    compteur++;
+                }
+            }
+            
+            // for element
+            // if ('</'+html_obj[elem_count].tag_name.split('<')[1] == element.tag_name) {
+            //     html_obj[elem_count].tag_info.close.position_start = element.tag_info.open.position_start
+            //     html_obj[elem_count].tag_info.close.position_end = element.tag_info.open.position_end
+            //     elem_count++;
+            // }else{
+            //     html_obj[elem_count].children.push(element)
+            //     elem_count++;
+            //     html_obj[elem_count] = element;
+            // }
+            // html_obj[compteur] = element;
+            // if (element.tag_info.self_closing == true) {
+            //     elem_count++;
+            // }
+        }
+        console.log(container);
+        
     }
     // Found watching tag_name and return it with some data about it 
     whatIsMyTag(tag = String){
@@ -1037,4 +1075,3 @@ module.exports = htmlString;
 
 // Test String Html  
 var a = new htmlString(y);
-console.log(a.tag_container[40]);
