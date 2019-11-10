@@ -28,11 +28,11 @@ class htmlString{
                 // end_index : end_index
                 var a = new Object;
                 var tag = originalTagFounder(html.slice(start_index,end_index+1)).param;                
-
-                if (tag.tag_info == undefined) {
+                if (tag.tag_info === undefined || tag.tag_info === null) {
                     tag.tag_info = null;
+                }else{
+                    a.tag_name_clear = tag.tag_info.tag_name
                 }
-                
                 a.tag_name = tag.default_tag
                 a.tag_info.open.position_start = start_index;
                 a.tag_info.open.position_end = start_index;
@@ -99,7 +99,7 @@ class htmlString{
                     
                 }
                 return {info: whatIsMyTag(data_splitted), default : original};
-            }            
+            }                        
             return data;
         }    
         function whatIsMyTag(tag = String){
@@ -1035,14 +1035,11 @@ class htmlString{
         // Every single 
         for (let index = 0; index < string_html.length; index++) {
             const element = string_html[index];
-            console.log(element);
-            
             var self_closing = element.tag_info.self_closing;
             var tag_name = element.tag_name;
-            console.log(element);                           
+            // console.log(element);                           
             // ADD the tag to the list container
             if (container[compteur] != undefined) {
-                console.log(container[compteur]);
                 // console.log(element.tag.param.tag_info);
                 if (container[compteur].tag_name_clear == '</'+container[compteur].tag_name_clear+'>') {
                     
