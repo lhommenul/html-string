@@ -95,40 +95,58 @@ class htmlString{
         var container = [], compteur = 0, elem_count = 0;
         for (let index = 0; index < html_obj.length; index++) {
             const element = html_obj[index];
+            // if (container[compteur] != undefined) {
+            //     if ('</'+container[compteur].tag_name.split('<')[1] == element.tag_name) {
+            //         container[compteur].tag_info.close.position_start = element.tag_info.open.position_start
+            //         container[compteur].tag_info.close.position_end = element.tag_info.open.position_end
+            //         compteur++;
+            //     }else{
+            //         container[compteur].children.push(element)
+            //         compteur++;
+            //         container[compteur] = element;
+            //     }
+            // } else {
+            //     container[compteur] = element;
+            //     if (element.tag_info.self_closing == true) {
+            //         compteur++;
+            //     }
+            // }            
+            // <=============> FOR ELEMENT
             // console.log(element);
-            if (container[compteur] != undefined) {
-                if ('</'+container[compteur].tag_name.split('<')[1] == element.tag_name) {
-                    container[compteur].tag_info.close.position_start = element.tag_info.open.position_start
-                    container[compteur].tag_info.close.position_end = element.tag_info.open.position_end
-                    compteur++;
+            if (html_obj[elem_count].tag_info.self_closing != true) {
+                // tag is a closing tag ?
+                function closingTag() {
+                    if (element.tag_name.indexOf('/') != -1) {
+                        if (element.tag_name.indexOf('/') != 1) {
+                            return false;
+                        }else{                        
+                            console.log('closing tag');                    
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                if (closingTag() == true) {
+                    if ('</'+html_obj[elem_count].tag_name.split('<')[1] == element.tag_name) {
+                        html_obj[elem_count].tag_info.close.position_start = element.tag_info.open.position_start
+                        html_obj[elem_count].tag_info.close.position_end = element.tag_info.open.position_end                    
+                        elem_count = index+1;   
+                    }else{
+                        html_obj[elem_count].children.push(element)    
+                    }
                 }else{
-                    container[compteur].children.push(element)
-                    compteur++;
-                    container[compteur] = element;
-                }
-            } else {
-                container[compteur] = element;
-                if (element.tag_info.self_closing == true) {
-                    compteur++;
-                }
-            }
-            
-            // for element
-            // if ('</'+html_obj[elem_count].tag_name.split('<')[1] == element.tag_name) {
-            //     html_obj[elem_count].tag_info.close.position_start = element.tag_info.open.position_start
-            //     html_obj[elem_count].tag_info.close.position_end = element.tag_info.open.position_end
-            //     elem_count++;
-            // }else{
-            //     html_obj[elem_count].children.push(element)
-            //     elem_count++;
-            //     html_obj[elem_count] = element;
-            // }
-            // html_obj[compteur] = element;
-            // if (element.tag_info.self_closing == true) {
-            //     elem_count++;
-            // }
+
+                    if (element.tag_info.self_closing != true) {
+                        html_obj[elem_count].children.push(html_obj[elem_count+1])
+                        elem_count = elem_count+2;
+                    }
+                }                                
+            }else{
+                // SELF-CLOSING TAGS
+                elem_count++;
+            }                                   
         }
-        console.log(container);
+        console.log(html_obj[219]);
         
     }
     // Found watching tag_name and return it with some data about it 
