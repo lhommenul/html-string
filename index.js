@@ -13,10 +13,78 @@ class htmlString{
     // Cut every single pieces of the html doc 
     htmlSplitter(html){
         var index = 0, container = [];
+        // Comment Detection 
+        var detectionComment = new Promise((resolve,reject)=>{
+            var start_com = [], last_one = 0
+            while (html.indexOf('<!--',last_one) != -1) {
+                var result = html.indexOf('<!--',last_one);
+                start_com.push(result)
+                last_one = result+4; 
+            }
+            for (let index = 0; index < start_com.length; index++) {
+                const element = start_com[index];
+                try {               
+                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+3);
+                    html.replace(to_replace,'');     
+                } catch (error) {
+                    reject('===> There is a probleme in the comment founded promise !!');
+                }
+            }
+            resolve();
+        })
+        // Script Detection
+        var detectionScript = new Promise((resolve,reject)=>{
+            var container = [], cont = 0;
+            while(html.indexOf('<script>', cont) != -1) {
+                var result = html.indexOf('<script>', cont);
+                container.push(result);
+                count = result+9;
+            }
+            for (let index = 0; index < container.length; index++) {
+                const element = container[index];
+                if (html.indexOf('</script>',element+9) > container[index+1]) {
+                    try {
+                        html.replace(element,html.indexOf('</script>',element+9)+9, '')          
+                    } catch (error) {
+                        reject('ERROR REPLACEMENT OFF THE CONTENT IN THE HTML STRING => DETECTION SCRIPT');                        
+                    }
+                }else{
+                    reject('ERROR SRIPT DETECTOR ? containe[index+1] > </sript> index ?');
+                }
+            }
+            resolve();
+        })
+        // Style Detection
+        var detectionStyle = new Promise((resolve,reject)=>{
+            var container = [], cont = 0;
+            while(html.indexOf('<style>', cont) != -1) {
+                var result = html.indexOf('<style>', cont);
+                container.push(result);
+                count = result+8;
+            }
+            for (let index = 0; index < container.length; index++) {
+                const element = container[index];
+                if (html.indexOf('</style>',element+8) > container[index+1]) {
+                    try {
+                        html.replace(element,html.indexOf('</style>',element+8)+8, '')          
+                    } catch (error) {
+                        reject('ERROR REPLACEMENT OFF THE CONTENT IN THE HTML STRING => DETECTION STYLE');                        
+                    }
+                }else{
+                    reject('ERROR STYLE DETECTOR ? containe[index+1] > </style> index ?');
+                }
+            }
+            resolve();
+        })
+        detectionComment.then(
+            detectionScript.then(
+                detectionStyle.then(                    
+            ).catch((error) => console.log(error)))
+            ).catch((error)=> console.log(error))
         restart(this.tagNameFounder, this.tagNameClearFounder,this.tagInfoFounder,this.whatIsMyTag,this.tagDataFounder)
         function restart(tagNameFounder,tagNameClearFounder,tagInfoFounder,whatIsMyTag,tagDataFounder) {
             var start = html.indexOf('<',index), end = html.indexOf('>',start);
-            if (start != -1) {
+            if (start != -1) {                            
                 var obj = new Object;
                 obj.tag_no_filter = html.slice(start,end+1);     
                 obj.tag_name = tagNameFounder(obj.tag_no_filter); 
@@ -47,8 +115,18 @@ class htmlString{
         if (tag.slice(1,2) == '/') {
             // CLOSING TAG
             return tag;
-        } else {
+        }else if (tag.slice(0,4) == '<!--' || tag.slice(0,3) == '-->'){
+            if (tag.slice(0,4) == '<!--') {
+                // console.log('commentaire OUVERTURE');
+                return '<!--'
+            }else{
+                // console.log('commentaire FERMETURE');
+                return '-->'
+            }
+        }else {
             // OPEN TAG
+            // console.log('ok');
+            
             if (tag.indexOf(' ') != -1) {
                 return tag.slice(0,tag.indexOf(' '))+'>';
             }else{
@@ -92,74 +170,39 @@ class htmlString{
         }
     }
     tagChildrenFounder(html_obj){
-        var container = [], compteur = 0, elem_count = 0;
-        for (let index = 0; index < html_obj.length; index++) {
-            const element = html_obj[index];
-            // if (container[compteur] != undefined) {
-            //     if ('</'+container[compteur].tag_name.split('<')[1] == element.tag_name) {
-            //         container[compteur].tag_info.close.position_start = element.tag_info.open.position_start
-            //         container[compteur].tag_info.close.position_end = element.tag_info.open.position_end
-            //         compteur++;
-            //     }else{
-            //         container[compteur].children.push(element)
-            //         compteur++;
-            //         container[compteur] = element;
-            //     }
-            // } else {
-            //     container[compteur] = element;
-            //     if (element.tag_info.self_closing == true) {
-            //         compteur++;
-            //     }
-            // }            
-            // <=============> FOR ELEMENT
-            // console.log(element);
-            if (html_obj[elem_count].tag_info.self_closing != true) {
-                // tag is a closing tag ?
-                function closingTag() {
-                    if (element.tag_name.indexOf('/') != -1) {
-                        if (element.tag_name.indexOf('/') != 1) {
-                            return false;
-                        }else{                        
-                            console.log('closing tag');                    
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-                if (closingTag() == true) {
-                    if ('</'+html_obj[elem_count].tag_name.split('<')[1] == element.tag_name) {
-                        html_obj[elem_count].tag_info.close.position_start = element.tag_info.open.position_start
-                        html_obj[elem_count].tag_info.close.position_end = element.tag_info.open.position_end                    
-                        elem_count = index+1;   
-                    }else{
-                        html_obj[elem_count].children.push(element)    
-                    }
-                }else{
-
-                    if (element.tag_info.self_closing != true) {
-                        html_obj[elem_count].children.push(html_obj[elem_count+1])
-                        elem_count = elem_count+2;
-                    }
-                }                                
+        var exit = false,compteur = 0;
+        while (exit === false) {
+            if (html_obj[compteur].tag_info.self_closing === true) {
+                compteur++;                
             }else{
-                // SELF-CLOSING TAGS
-                elem_count++;
-            }                                   
-        }
-        console.log(html_obj[219]);
-        
+                var push_out = false,count = 1;
+                while (push_out == false) {
+                if (compteur > html_obj.length) {
+                    push_out = true;
+                }else{                                
+                    if ('</'+html_obj[compteur].tag_name.split('<')[1] == html_obj[compteur+count].tag_name) {
+                        html_obj[compteur].tag_info.close.position_start = html_obj[compteur+count].tag_info.open.position_start
+                        html_obj[compteur].tag_info.close.position_end = html_obj[compteur+count].tag_info.open.position_end;
+                        compteur = compteur+count+1;
+                        push_out = true;
+                    }else{
+                        html_obj[compteur].children.push(html_obj[compteur+count])
+                        compteur++;
+                        // html_obj[compteur] = html_obj[compteur+count]
+                        count++;
+                    }
+                }
+                }
+            }
+            if (html_obj[compteur] == undefined) {
+                exit = true;
+            }
+        }        
     }
     // Found watching tag_name and return it with some data about it 
     whatIsMyTag(tag = String){
         switch (tag) {
             // Structure
-            case '<!--...-->':
-            return {
-                tag_name:'<!--...-->',
-                self_closing:true,
-                type:'structure'
-            }                  
-            break;
         case '<!DOCTYPE>':
             return {
                 tag_name:'<!DOCTYPE>',
@@ -1069,23 +1112,24 @@ class htmlString{
     }
 }
 class Object{
-    constructor(){
-        this.tag_name = null // <= exemple 'div , img , a , ul ,table ...'
-        this.tag_name_clear = null
-        this.tag_no_filter = null
-        this.tag_info = {
-            open : {
-                position_start : null, // <= '<', exemple position_start = 10 of the opening tag 
-                position_end : null // <= '>', exemple position_end = 13 of the opening tag 
-            },
-            close : {
-                position_start : null, // <= '>', exemple position_start = 13 of the closing tag 
-                position_end : null // <= '>', exemple position_end = 13 of the closing tag 
-            },
-            self_closing : true, // <= if the tag as only one balise or not
-        }
-        this.tag_data = [] // <= src , href , name ... etc
-        this.children = [] // <= every children witch he got 
+    constructor(tag_name = String,tag_name_clear = String,tag_no_filter = String,tag_info = Object,tag_data = Array, children = Array){
+        this.tag_name = tag_name // <= exemple 'div , img , a , ul ,table ...'
+        this.tag_name_clear = tag_name_clear
+        this.tag_no_filter = tag_no_filter
+        this.tag_info = tag_info
+        // {
+        //     open : {
+        //         position_start : null, // <= '<', exemple position_start = 10 of the opening tag 
+        //         position_end : null // <= '>', exemple position_end = 13 of the opening tag 
+        //     },
+        //     close : {
+        //         position_start : null, // <= '>', exemple position_start = 13 of the closing tag 
+        //         position_end : null // <= '>', exemple position_end = 13 of the closing tag 
+        //     },
+        //     self_closing : true, // <= if the tag as only one balise or not
+        // }
+        this.tag_data = tag_data // <= src , href , name ... etc
+        this.children = children // <= every children witch he got 
     }
 }
 module.exports = htmlString;
