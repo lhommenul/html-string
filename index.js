@@ -38,11 +38,11 @@ class htmlString{
             while(html.indexOf('<script>', cont) != -1) {
                 var result = html.indexOf('<script>', cont);
                 container.push(result);
-                count = result+9;
+                cont = result+9;
             }
             for (let index = 0; index < container.length; index++) {
                 const element = container[index];
-                if (html.indexOf('</script>',element+9) > container[index+1]) {
+                if (html.indexOf('</script>',element+9) < container[index+1] || container[index+1] == undefined) {
                     try {
                         html.replace(element,html.indexOf('</script>',element+9)+9, '')          
                     } catch (error) {
@@ -56,59 +56,58 @@ class htmlString{
         })
         // Style Detection
         var detectionStyle = new Promise((resolve,reject)=>{
-            var container = [], cont = 0;
-            while(html.indexOf('<style>', cont) != -1) {
-                var result = html.indexOf('<style>', cont);
-                container.push(result);
-                count = result+8;
+            var container = { open : [], close : []}, cont = 0;
+            // Searching Closing Tag
+            while(html.indexOf('</style>', cont) != -1) {
+                var result = html.indexOf('</style>', cont);
+                container.close.push({start:result,end:result+9});
+                cont = result+9;
             }
-            for (let index = 0; index < container.length; index++) {
-                const element = container[index];
-                if (html.indexOf('</style>',element+8) > container[index+1]) {
-                    try {
-                        html.replace(element,html.indexOf('</style>',element+8)+8, '')          
-                    } catch (error) {
-                        reject('ERROR REPLACEMENT OFF THE CONTENT IN THE HTML STRING => DETECTION STYLE');                        
-                    }
-                }else{
-                    reject('ERROR STYLE DETECTOR ? containe[index+1] > </style> index ?');
-                }
+            cont = 0;
+            while (html.indexOf('<style',cont) != -1) {
+                var start = html.indexOf('<style',cont)
+                var over = html.indexOf('>',start+6)
+                container.open.push({start:start,end:over})
+                cont = over+2;
             }
-            resolve();
+            for (let index = 0; index < container.close.length; index++) {
+                const element = container;
+                var to_remove = html.slice(element.open[index].start,element.close[index].end);
+                html.replace(to_remove,'')                
+            }
+            resolve({htm:html});
         })
+        // Balise Detection 
+        var detectionBalise = new Promise((resolve,reject)=>{
+            var tags = { open : [], close : [] }, count = 0;
+            try {
+                // Number of opening bracket
+                while (html.indexOf('<',count) != -1) {
+                    var i = html.indexOf('<',count)
+                    tags.open.push(i)
+                    count = i+1
+                }            
+                count = 0;       
+                // Number of closing bracket     
+                while (html.indexOf('>',count) != -1) {
+                    var i = html.indexOf('>',count)
+                    tags.close.push(i)
+                    count = i+1
+                }         
+
+            } catch (error) {
+                console.log(error);                
+            }
+            // resolve({tag:tags});
+        })
+        // EXECUTION LIST ORDER
         detectionComment.then(
             detectionScript.then(
-                detectionStyle.then(                    
+                detectionStyle.then(  
+                    detectionBalise.then(
+            ).catch((error)=> console.log(error))                  
             ).catch((error) => console.log(error)))
             ).catch((error)=> console.log(error))
-        restart(this.tagNameFounder, this.tagNameClearFounder,this.tagInfoFounder,this.whatIsMyTag,this.tagDataFounder)
-        function restart(tagNameFounder,tagNameClearFounder,tagInfoFounder,whatIsMyTag,tagDataFounder) {
-            var start = html.indexOf('<',index), end = html.indexOf('>',start);
-            if (start != -1) {                            
-                var obj = new Object;
-                obj.tag_no_filter = html.slice(start,end+1);     
-                obj.tag_name = tagNameFounder(obj.tag_no_filter); 
-                obj.tag_name_clear = tagNameClearFounder(obj.tag_name)
-                obj.tag_info = {
-                    open : {
-                        position_start : start, 
-                        position_end : end
-                    },
-                    close : {
-                        position_start : null, 
-                        position_end : null 
-                    },
-                    self_closing : tagInfoFounder(obj.tag_name_clear,whatIsMyTag).self_closing, 
-                }
-                obj.tag_data = tagDataFounder(obj);
-                obj.children = [] 
-                container.push(obj)                      
-                index = end+1;
-                restart(tagNameFounder,tagNameClearFounder,tagInfoFounder,whatIsMyTag,tagDataFounder);
-            }
-        }
-        this.tagChildrenFounder(container)
-        return container;
     }
     tagNameFounder(tag){
         if (tag == undefined)  return 
