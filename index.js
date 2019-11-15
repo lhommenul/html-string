@@ -15,7 +15,7 @@ class htmlString{
         var index = 0, container = [];
         // Comment Detection 
         var detectionComment = new Promise((resolve,reject)=>{
-            var start_com = [], last_one = 0
+            var start_com = [], last_one = 0, comments_elements = []
             while (html.indexOf('<!--',last_one) != -1) {
                 var result = html.indexOf('<!--',last_one);
                 start_com.push(result)
@@ -24,39 +24,42 @@ class htmlString{
             for (let index = 0; index < start_com.length; index++) {
                 const element = start_com[index];
                 try {               
-                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+3);
+                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+4);
+                    comments_elements.push({start:element,close:html.indexOf('-->',element+4)+4,data:to_replace})
                     html.replace(to_replace,'');     
                 } catch (error) {
                     reject('===> There is a probleme in the comment founded promise !!');
                 }
             }
-            resolve();
+            resolve({data:comments_elements});
         })
         // Script Detection
         var detectionScript = new Promise((resolve,reject)=>{
-            var container = [], cont = 0;
-            while(html.indexOf('<script>', cont) != -1) {
-                var result = html.indexOf('<script>', cont);
-                container.push(result);
+            var container = {open:[],close:[]}, cont = 0, script_elements = [];
+            while(html.indexOf('</script>', cont) != -1) {
+                var result = html.indexOf('</script>', cont);
+                container.close.push(result);
                 cont = result+9;
             }
-            for (let index = 0; index < container.length; index++) {
-                const element = container[index];
-                if (html.indexOf('</script>',element+9) < container[index+1] || container[index+1] == undefined) {
-                    try {
-                        html.replace(element,html.indexOf('</script>',element+9)+9, '')          
-                    } catch (error) {
-                        reject('ERROR REPLACEMENT OFF THE CONTENT IN THE HTML STRING => DETECTION SCRIPT');                        
-                    }
+            cont = 0;
+            for (let index = 0; index < container.close.length; index++) {
+                const element = container.close[index];
+                var script = html.indexOf('<script',cont)
+                if (script < element) {
+                    var position = html.indexOf('>',script+7)                    
+                    // replace 
+                    script_elements.push({start:script,close:position+1,data:html.slice(script,position+1,element+9)})
+                    html.replace(html.slice(script,position+1,element+9),'')
+                    cont = position++;
                 }else{
-                    reject('ERROR SRIPT DETECTOR ? containe[index+1] > </sript> index ?');
+                    reject('ERROR script balise');
                 }
             }
-            resolve();
+            resolve({data:script_elements});
         })
         // Style Detection
         var detectionStyle = new Promise((resolve,reject)=>{
-            var container = { open : [], close : []}, cont = 0;
+            var container = { open : [], close : []}, cont = 0,style_elements = [];
             // Searching Closing Tag
             while(html.indexOf('</style>', cont) != -1) {
                 var result = html.indexOf('</style>', cont);
@@ -73,9 +76,10 @@ class htmlString{
             for (let index = 0; index < container.close.length; index++) {
                 const element = container;
                 var to_remove = html.slice(element.open[index].start,element.close[index].end);
+                style_elements.push({open:element.open[index].start,close:element.close[index].end,data:to_remove})
                 html.replace(to_remove,'')                
             }
-            resolve({htm:html});
+            resolve({data:style_elements});
         })
         // Balise Detection 
         var detectionBalise = new Promise((resolve,reject)=>{
