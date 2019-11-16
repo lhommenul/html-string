@@ -6,6 +6,10 @@ const html_scraping = require('html-scraping');
 var result = new html_scraping('<html>'Your HTML document'</html>')
 --> you can use some methods to get specific data :
 
+================= NEW UPDATE V2 ================
+-> Big improvement in detection 
+-> Get more data of eatch elements
+
 * You can log the result to see you html_string splitted in pieces  
 
 1. Get elements by there className :
