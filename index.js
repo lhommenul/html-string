@@ -8,6 +8,7 @@ const fs = require('fs')
 
 class htmlString{
     constructor(html_string = String){
+        this.html_copie = html_string;
         this.tag_container = this.htmlSplitter(html_string);
         this.data = {
             commentaire:null,
@@ -16,22 +17,23 @@ class htmlString{
         }
     }
     // Cut every single pieces of the html doc 
+    
     htmlSplitter(html){
         var index = 0, container = [];
         // Comment Detection 
-        var detectionComment = new Promise((resolve,reject)=>{
+        var detectionComment = new Promise((resolve,reject)=>{            
             var start_com = [], last_one = 0, comments_elements = []
-            while (html.indexOf('<!--',last_one) != -1) {
-                var result = html.indexOf('<!--',last_one);
+            while (this.html_copie.indexOf('<!--',last_one) != -1) {
+                var result = this.html_copie.indexOf('<!--',last_one);
                 start_com.push(result)
                 last_one = result+4; 
             }
             for (let index = 0; index < start_com.length; index++) {
                 const element = start_com[index];
                 try {               
-                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+3);
-                    comments_elements.push({start:element,close:html.indexOf('-->',element+4)+3,data:to_replace})
-                    html.replace(to_replace,'');     
+                    var to_replace = this.html_copie.slice(element,this.html_copie.indexOf('-->',element+4)+3);
+                    comments_elements.push({start:element,close:this.html_copie.indexOf('-->',element+4)+3,data:to_replace})
+                    this.html_copie.replace(to_replace,'');     
                 } catch (error) {
                     reject('===> There is a probleme in the comment founded promise !!');
                 }
@@ -39,28 +41,28 @@ class htmlString{
             // Delete the content from the html document
             for (let index = 0; index < comments_elements.length; index++) {
                 const element = comments_elements[index];
-                var to_replace = html.slice(element.start,element.close)                
-                html = html.replace(to_replace,'')   
-            }                        
+                var to_replace = this.html_copie.slice(element.start,element.close)                
+                this.html_copie = this.html_copie.replace(to_replace,'')   
+            }                     
             resolve({data:comments_elements});
         })
         // Script Detection
         var detectionScript = new Promise((resolve,reject)=>{
             var container = {open:[],close:[]}, cont = 0, script_elements = [];            
-            while(html.indexOf('</script>', cont) != -1) {
-                var result = html.indexOf('</script>', cont);
+            while(this.html_copie.indexOf('</script>', cont) != -1) {
+                var result = this.html_copie.indexOf('</script>', cont);
                 container.close.push(result);
                 cont = result+9;
             }
             cont = 0;
             for (let index = 0; index < container.close.length; index++) {
                 const element = container.close[index];
-                var script = html.indexOf('<script',cont)
+                var script = this.html_copie.indexOf('<script',cont)
                 if (script < element) {
-                    var position = html.indexOf('>',script+7)                    
+                    var position = this.html_copie.indexOf('>',script+7)                    
                     container.open.push(script)
                     // replace 
-                    script_elements.push({start:script,close:position+1,data:html.slice(script,element+9)})
+                    script_elements.push({start:script,close:position+1,data:this.html_copie.slice(script,element+9)})
                     cont = position++;
                 }else{
                     reject('ERROR script balise');
@@ -69,7 +71,7 @@ class htmlString{
             // Delete the content from the html document
             for (let index = 0; index < script_elements.length; index++) {
                 const element = script_elements[index];
-                html = html.replace(element.data,'')   
+                this.html_copie = this.html_copie.replace(element.data,'')   
             }            
             resolve({data:script_elements});
         })
@@ -77,33 +79,36 @@ class htmlString{
         var detectionStyle = new Promise((resolve,reject)=>{
             var container = { open : [], close : []}, cont = 0,style_elements = [];
             // Searching Closing Tag
-            while(html.indexOf('</style>', cont) != -1) {
-                var result = html.indexOf('</style>', cont);
+            while(this.html_copie.indexOf('</style>', cont) != -1) {
+                var result = this.html_copie.indexOf('</style>', cont);
                 container.close.push({start:result,end:result+9});
                 cont = result+9;
             }
             cont = 0;
-            while (html.indexOf('<style',cont) != -1) {
-                var start = html.indexOf('<style',cont)
-                var over = html.indexOf('>',start+6)
+            while (this.html_copie.indexOf('<style',cont) != -1) {
+                var start = this.html_copie.indexOf('<style',cont)
+                var over = this.html_copie.indexOf('>',start+6)
                 container.open.push({start:start,end:over})
                 cont = over+2;
             }
             for (let index = 0; index < container.close.length; index++) {
                 const element = container;
-                var to_remove = html.slice(element.open[index].start,element.close[index].end-1);
+                var to_remove = this.html_copie.slice(element.open[index].start,element.close[index].end-1);
                 style_elements.push({start:element.open[index].start,close:element.close[index].end,data:to_remove})                                
             }
             // console.log(style_elements);
             for (let index = 0; index < style_elements.length; index++) {
                 const element = style_elements[index];
-                var to_replace = html.slice(element.start,element.close)                                
-                html = html.replace(to_replace,'')   
+                var to_replace = this.html_copie.slice(element.start,element.close)                                
+                this.html_copie = this.html_copie.replace(to_replace,'')   
             }                        
             resolve({data:style_elements});
         })
         // Balise Detection 
         var detectionBalise = new Promise((resolve,reject)=>{
+            fs.writeFile('base.txt',this.html_copie,(err)=>{
+                console.log(err);                
+            })
             var tags = { open : [], close : [] }, count = 0;
             try {
                 // Number of opening bracket
@@ -121,9 +126,10 @@ class htmlString{
                 }                                                     
             } catch (error) {
                 console.log(error);                
-            }
+            }            
             // Whats are beetween those tags ?
             var ok = true, u = 0,founded_tags = [];
+            var l = 0
             while (ok != false) {
                 var tag_temp = {
                     start : tags.open[u],
@@ -132,7 +138,8 @@ class htmlString{
                     closing_tag : false,
                     self_closing : false,
                 }
-                var tag = html.slice(tags.open[u],tags.close[u]+1)           
+                
+                var tag = this.html_copie.slice(tags.open[u],tags.close[u]+1)           
                 // =======> Check if there is some data ?
                 if (tag.indexOf('=') != -1) {
                     // search for some data
@@ -161,36 +168,41 @@ class htmlString{
                         })          
                         i = tag.indexOf('=',i)+1;              
                     }
-                }   
-                             
+                }                                
                 // =======> Is it a closing tag ?                
-                if (html.slice(tags.open[u]+1,tags.open[u]+2) == '/') tag_temp.closing_tag = true;
+                if (this.html_copie.slice(tags.open[u]+1,tags.open[u]+2) == '/') tag_temp.closing_tag = true;
                 // ========> Self Closing Tag ?                
-                if (html.slice(tags.close[u]-1,tags.close[u]) == '/') tag_temp.self_closing = true;;
+                if (this.html_copie.slice(tags.close[u]-1,tags.close[u]) == '/') tag_temp.self_closing = true;;
                 // Restart ?
                 if (tags.open[u] == undefined) ok = false;
                 u++;
                 founded_tags.push(tag_temp);
             }
+            var q = 0, couple = 0;
+            console.log(founded_tags[20].self_closing);  
+            while (founded_tags[q] != undefined) {
+                q++;
+            }
+                            
             // Delete the content founded from the html document
             for (let index = 0; index < founded_tags.length; index++) {
-                var tag = html.slice(founded_tags[index].start,founded_tags[index].close)           
-                html = html.replace(tag,'')
-            }
+                var tag = this.html_copie.slice(founded_tags[index].start,founded_tags[index].close)                           
+                this.html_copie = this.html_copie.replace(tag,'')
+            }            
+            fs.writeFile('o.txt',JSON.stringify(founded_tags),()=>{})
             resolve({data:founded_tags});
         })
         // EXECUTION LIST ORDER
         detectionComment.then(
             (response)=>{
-                this.data.commentaire = response;                   
+                this.data.commentaire = response.data;                   
                 detectionScript.then((response)=>{
-                    // console.log(response);
                     this.data.script = response;
                     detectionStyle.then((response)=>{
                         this.data.style = response;        
-                        detectionBalise.then((response)=>{         
-                            fs.writeFile('result.txt',html,(err)=>{
-                                console.log(err);                                
+                        detectionBalise.then((response)=>{       
+                            fs.writeFile('result.txt',this.html_copie,(err)=>{
+                                // console.log(err);                                
                             })                    
                         }).catch((error)=>{
                             console.log(error);                             
@@ -202,7 +214,7 @@ class htmlString{
                     console.log(error);                    
                 }) 
             }).catch((error)=>{
-                console.log(error);                
+                console.log('COMMENT DETECTION SECTION PROBLEM : '+ error);                
             })
     }
     getData(){
