@@ -1,4 +1,5 @@
 const y = require('./test.js')
+const fs = require('fs')
 // Next one :
     // -> Detect when there is a comment => Must found the patern //
     // -> Get the value of an element => check what we found between balises
@@ -8,7 +9,11 @@ const y = require('./test.js')
 class htmlString{
     constructor(html_string = String){
         this.tag_container = this.htmlSplitter(html_string);
-        this.tagNameFounder();
+        this.data = {
+            commentaire:null,
+            script:null,
+            style:null,
+        }
     }
     // Cut every single pieces of the html doc 
     htmlSplitter(html){
@@ -24,18 +29,24 @@ class htmlString{
             for (let index = 0; index < start_com.length; index++) {
                 const element = start_com[index];
                 try {               
-                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+4);
-                    comments_elements.push({start:element,close:html.indexOf('-->',element+4)+4,data:to_replace})
+                    var to_replace = html.slice(element,html.indexOf('-->',element+4)+3);
+                    comments_elements.push({start:element,close:html.indexOf('-->',element+4)+3,data:to_replace})
                     html.replace(to_replace,'');     
                 } catch (error) {
                     reject('===> There is a probleme in the comment founded promise !!');
                 }
             }
+            // Delete the content from the html document
+            for (let index = 0; index < comments_elements.length; index++) {
+                const element = comments_elements[index];
+                var to_replace = html.slice(element.start,element.close)                
+                html = html.replace(to_replace,'')   
+            }                        
             resolve({data:comments_elements});
         })
         // Script Detection
         var detectionScript = new Promise((resolve,reject)=>{
-            var container = {open:[],close:[]}, cont = 0, script_elements = [];
+            var container = {open:[],close:[]}, cont = 0, script_elements = [];            
             while(html.indexOf('</script>', cont) != -1) {
                 var result = html.indexOf('</script>', cont);
                 container.close.push(result);
@@ -47,14 +58,19 @@ class htmlString{
                 var script = html.indexOf('<script',cont)
                 if (script < element) {
                     var position = html.indexOf('>',script+7)                    
+                    container.open.push(script)
                     // replace 
-                    script_elements.push({start:script,close:position+1,data:html.slice(script,position+1,element+9)})
-                    html.replace(html.slice(script,position+1,element+9),'')
+                    script_elements.push({start:script,close:position+1,data:html.slice(script,element+9)})
                     cont = position++;
                 }else{
                     reject('ERROR script balise');
                 }
             }
+            // Delete the content from the html document
+            for (let index = 0; index < script_elements.length; index++) {
+                const element = script_elements[index];
+                html = html.replace(element.data,'')   
+            }            
             resolve({data:script_elements});
         })
         // Style Detection
@@ -75,10 +91,15 @@ class htmlString{
             }
             for (let index = 0; index < container.close.length; index++) {
                 const element = container;
-                var to_remove = html.slice(element.open[index].start,element.close[index].end);
-                style_elements.push({open:element.open[index].start,close:element.close[index].end,data:to_remove})
-                html.replace(to_remove,'')                
+                var to_remove = html.slice(element.open[index].start,element.close[index].end-1);
+                style_elements.push({start:element.open[index].start,close:element.close[index].end,data:to_remove})                                
             }
+            // console.log(style_elements);
+            for (let index = 0; index < style_elements.length; index++) {
+                const element = style_elements[index];
+                var to_replace = html.slice(element.start,element.close)                                
+                html = html.replace(to_replace,'')   
+            }                        
             resolve({data:style_elements});
         })
         // Balise Detection 
@@ -97,1021 +118,95 @@ class htmlString{
                     var i = html.indexOf('>',count)
                     tags.close.push(i)
                     count = i+1
-                }         
-
+                }                                                     
             } catch (error) {
                 console.log(error);                
             }
-            // resolve({tag:tags});
+            // Whats are beetween those tags ?
+            var ok = true, u = 0,founded_tags = [];
+            while (ok != false) {
+                var tag_temp = {
+                    start : tags.open[u],
+                    close : tags.close[u]+1,
+                    data : [],
+                    closing_tag : false,
+                    self_closing : false,
+                }
+                var tag = html.slice(tags.open[u],tags.close[u]+1)           
+                // =======> Check if there is some data ?
+                if (tag.indexOf('=') != -1) {
+                    // search for some data
+                    var i = 0;
+                    while (tag.indexOf('=',i) != -1) {
+                        var l = 0,value = 0;
+                        while (tag.indexOf(' ',l) < tag.indexOf('=',i) && tag.indexOf(' ',l) != -1) {
+                            value = tag.indexOf(' ',l);
+                            l = value+1;
+                        }
+                        var data_inside = tag.slice(tag.indexOf('=',i)+1,tag.indexOf('=',i)+2);
+                        if (data_inside == '"' || data_inside == "'") {
+                            var end = '';
+                            // console.log(data_inside);
+                            
+                            if (data_inside == '"') {
+                                end = tag.indexOf('"',tag.indexOf('=',i)+2)
+                            }else{
+                                end = tag.indexOf("'",tag.indexOf('=',i)+2)
+                            }
+                            data_inside = tag.slice(tag.indexOf('=',i)+2,end);                            
+                        }
+                        tag_temp.data.push({
+                            name : tag.slice(value,tag.indexOf('=',i)),
+                            data : data_inside,
+                        })          
+                        i = tag.indexOf('=',i)+1;              
+                    }
+                }   
+                             
+                // =======> Is it a closing tag ?                
+                if (html.slice(tags.open[u]+1,tags.open[u]+2) == '/') tag_temp.closing_tag = true;
+                // ========> Self Closing Tag ?                
+                if (html.slice(tags.close[u]-1,tags.close[u]) == '/') tag_temp.self_closing = true;;
+                // Restart ?
+                if (tags.open[u] == undefined) ok = false;
+                u++;
+                founded_tags.push(tag_temp);
+            }
+            // Delete the content founded from the html document
+            for (let index = 0; index < founded_tags.length; index++) {
+                var tag = html.slice(founded_tags[index].start,founded_tags[index].close)           
+                html = html.replace(tag,'')
+            }
+            resolve({data:founded_tags});
         })
         // EXECUTION LIST ORDER
         detectionComment.then(
-            detectionScript.then(
-                detectionStyle.then(  
-                    detectionBalise.then(
-            ).catch((error)=> console.log(error))                  
-            ).catch((error) => console.log(error)))
-            ).catch((error)=> console.log(error))
-    }
-    tagNameFounder(tag){
-        if (tag == undefined)  return 
-        if (tag.slice(1,2) == '/') {
-            // CLOSING TAG
-            return tag;
-        }else if (tag.slice(0,4) == '<!--' || tag.slice(0,3) == '-->'){
-            if (tag.slice(0,4) == '<!--') {
-                // console.log('commentaire OUVERTURE');
-                return '<!--'
-            }else{
-                // console.log('commentaire FERMETURE');
-                return '-->'
-            }
-        }else {
-            // OPEN TAG
-            // console.log('ok');
-            
-            if (tag.indexOf(' ') != -1) {
-                return tag.slice(0,tag.indexOf(' '))+'>';
-            }else{
-                return tag;
-            }
-        }                 
-    }
-    tagNameClearFounder(tag){
-        // EXEMPLE RETURN : <ta>
-        if (tag.slice(1,2) != '/') {
-            return tag
-        }else{
-            return '<'+tag.slice(2,tag.length)
-        }
-        
-        // EXEMPLE RETURN : </ta> or <ta>
-    }
-    tagInfoFounder(tag,whatIsMyTag){
-        return whatIsMyTag(tag)
-    }
-    tagDataFounder(tag){
-        // dont search if this is a self closing tag and a closing tag
-        if (tag.tag_info.self_closing == true || tag.tag_name.indexOf('/') != -1) {
-            // RIEN
-        }else{
-            // search data
-            var data = tag.tag_no_filter, space = data.indexOf(' '), container = [];
-            if (space != -1) {
-                space = data.split(' ');
-                for (let index = 0; index < space.length; index++) {
-                    const element = space[index];
-                    if (element.indexOf('=') != -1) {
-                        container.push({
-                            param_name:element.slice(0,element.indexOf('=')),
-                            param_data:element.slice(element.indexOf('=')+1,element.length)
+            (response)=>{
+                this.data.commentaire = response;                   
+                detectionScript.then((response)=>{
+                    // console.log(response);
+                    this.data.script = response;
+                    detectionStyle.then((response)=>{
+                        this.data.style = response;        
+                        detectionBalise.then((response)=>{         
+                            fs.writeFile('result.txt',html,(err)=>{
+                                console.log(err);                                
+                            })                    
+                        }).catch((error)=>{
+                            console.log(error);                             
                         })
-                    }
-                }                
-            }
-            return container;
-        }
+                    }).catch((error)=>{
+                        console.log(error);                        
+                    })
+                }).catch((error)=>{
+                    console.log(error);                    
+                }) 
+            }).catch((error)=>{
+                console.log(error);                
+            })
     }
-    tagChildrenFounder(html_obj){
-        var exit = false,compteur = 0;
-        while (exit === false) {
-            if (html_obj[compteur].tag_info.self_closing === true) {
-                compteur++;                
-            }else{
-                var push_out = false,count = 1;
-                while (push_out == false) {
-                if (compteur > html_obj.length) {
-                    push_out = true;
-                }else{                                
-                    if ('</'+html_obj[compteur].tag_name.split('<')[1] == html_obj[compteur+count].tag_name) {
-                        html_obj[compteur].tag_info.close.position_start = html_obj[compteur+count].tag_info.open.position_start
-                        html_obj[compteur].tag_info.close.position_end = html_obj[compteur+count].tag_info.open.position_end;
-                        compteur = compteur+count+1;
-                        push_out = true;
-                    }else{
-                        html_obj[compteur].children.push(html_obj[compteur+count])
-                        compteur++;
-                        // html_obj[compteur] = html_obj[compteur+count]
-                        count++;
-                    }
-                }
-                }
-            }
-            if (html_obj[compteur] == undefined) {
-                exit = true;
-            }
-        }        
-    }
-    // Found watching tag_name and return it with some data about it 
-    whatIsMyTag(tag = String){
-        switch (tag) {
-            // Structure
-        case '<!DOCTYPE>':
-            return {
-                tag_name:'<!DOCTYPE>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<html>':
-            return {
-                tag_name:'<html>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<head>':
-            return {
-                tag_name:'<head>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<title>':
-            return {
-                tag_name:'<title>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<meta />':
-            return {
-                tag_name:'<meta />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<body>':
-            return {
-                tag_name:'<body>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        
-        // Sections
-        
-        case '<div>':
-            return {
-                tag_name:'<div>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<span>':
-            return {
-                tag_name:'<span>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<section>':
-            return {
-                tag_name:'<section>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<header>':
-            return {
-                tag_name:'<header>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<hgroup>':
-            return {
-                tag_name:'<hgroup>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<nav>':
-            return {
-                tag_name:'<nav>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<article>':
-            return {
-                tag_name:'<article>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<details>':
-            return {
-                tag_name:'<details>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<summary>':
-            return {
-                tag_name:'<summary>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<figure>':
-            return {
-                tag_name:'<figure>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<figcaption>':
-            return {
-                tag_name:'<figcaption>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<aside>':
-            return {
-                tag_name:'<aside>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        case '<footer>':
-            return {
-                tag_name:'<footer>',
-                self_closing:false,
-                type:'section'
-            }              
-            break;
-        
-        // Références
-        
-        case '<base />':
-            return {
-                tag_name:'<base />',
-                self_closing:true,
-                type:'base'
-            }              
-        
-            break;
-        case '<link />':
-            return {
-                tag_name:'<link />',
-                self_closing:true,
-                type:'structure'
-            }              
-        
-            break;
-        case '<style>':
-            return {
-                tag_name:'<style>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<script>':
-            return {
-                tag_name:'<script>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<noscript>':
-            return {
-                tag_name:'<noscript>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        
-        Cadres
-        
-        case '<frameset>':
-            return {
-                tag_name:'<frameset>',
-                self_closing:true,
-                type:'structure'
-            }              
-        
-            break;
-        case '<frame />':
-            return {
-                tag_name:'<frame />',
-                self_closing:true,
-                type:'structure'
-            }              
-        
-            break;
-        case '<noframes>':
-            return {
-                tag_name:'<noframes>',
-                self_closing:true,
-                type:'structure'
-            }              
-        
-            break;
-        case '<iframe>':
-            return {
-                tag_name:'<iframe>',
-                self_closing:true,
-                type:'structure'
-            }              
-        
-            break;
-        
-        Listes
-        
-        case '<dir>':
-            return {
-                tag_name:'<dir>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<ol>':
-             
-            return{ tag_name:'<ol>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<ul>':
-            return {tag_name:'<ul>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<li>':
-                return {tag_name:'<li>',
-                    self_closing:false,
-                    type:'structure'
-                }              
-        
-            break;
-        case '<dd>':
-            
-                return {tag_name:'<dd>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<dl>':
-            
-                return {tag_name:'<dl>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<dt>':
-            
-                return { tag_name:'<dt>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        
-        
-        
-        // Liens
-        
-        case '<a>':
-            
-                return{tag_name:'<a>', 
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<map>':
-            return {
-                tag_name:'<map>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        case '<area>':
-            return {
-                tag_name:'<area>',
-                self_closing:false,
-                type:'structure'
-            }              
-        
-            break;
-        
-        Multimédia
-        
-        case '<img />':
-            return {
-                tag_name:'<img />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<video>':
-            return {
-                tag_name:'<video>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<track>':
-            return {
-                tag_name:'<track>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<audio>':
-            return {
-                tag_name:'<audio>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<source>':
-            return {
-                tag_name:'<source>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<embed>':
-            return {
-                tag_name:'<embed>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<applet>':
-            return {
-                tag_name:'<applet>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<object>':
-            return {
-                tag_name:'<object>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<param />':
-            return {
-                tag_name:'<param />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<canvas>':
-            return {
-                tag_name:'<canvas>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<svg>':
-            return {
-                tag_name:'<svg>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        
-        // Tableaux
-        
-        case '<table>':
-            return {
-                tag_name:'<table>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<caption>':
-            return {
-                tag_name:'<caption>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<colgroup>':
-            return {
-                tag_name:'<colgroup>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<col />':
-            return {
-                tag_name:'<col />',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<thead>':
-            return {
-                tag_name:'<thead>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<tbody>':
-            return {
-                tag_name:'<tbody>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<tfoot>':
-            return {
-                tag_name:'<tfoot>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<tr>':
-            
-                return  {tag_name:'<tr>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<th>':
-                return {tag_name:'<th>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<td>':
-                return { tag_name:'<td>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        
-        Formulaires
-        
-        case '<form>':
-            return {
-                tag_name:'<form>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<fieldset>':
-            return {
-                tag_name:'<fieldset>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<legend>':
-            return {
-                tag_name:'<legend>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<label>':
-            return {
-                tag_name:'<label>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<button>':
-            return {
-                tag_name:'<button>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<input />':
-            return {
-                tag_name:'<input />',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<textarea>':
-            return {
-                tag_name:'<textarea>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<select>':
-            return {
-                tag_name:'<select>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<optgroup>':
-            return {
-                tag_name:'<optgroup>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<option>':
-            return {
-                tag_name:'<option>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<isindex>':
-            return {
-                tag_name:'<isindex>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<menu>':
-            return {
-                tag_name:'<menu>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<command>':
-            return {
-                tag_name:'<command>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<datalist>':
-            return {
-                tag_name:'<datalist>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<output>':
-            return {
-                tag_name:'<output>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        case '<keygen>':
-            return {
-                tag_name:'<keygen>',
-                self_closing:false,
-                type:'structure'
-            }              
-            break;
-        
-        
-        // Rendus visuels
-        
-        case '<center>':
-            return {
-                tag_name:'<center>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<hr />':
-            return {
-                tag_name:'<hr />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<br />':
-            return {
-                tag_name:'<br />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<wbr />':
-            return {
-                tag_name:'<wbr />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<meter>':
-            return {
-                tag_name:'<meter>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<progress>':
-            return {
-                tag_name:'<progress>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        
-        // Textes - mise en forme
-        
-        case '<b>':
-            return {tag_name:'<b>', 
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<basefont />':
-            return {
-                tag_name:'<basefont />',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<bdi>':
-            return {
-                tag_name:'<bdi>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<bdo>':
-            return {
-                tag_name:'<bdo>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<big>':
-            return {
-                tag_name:'<big>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<font>':
-            return {
-                tag_name:'<font>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<i>':
-            return {tag_name:'<i>', 
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<mark>':
-            return {
-                tag_name:'<mark>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<strike>':
-            return {
-                tag_name:'<strike>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<sub>':
-            return {
-                tag_name:'<sub>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<sup>':
-            return {
-                tag_name:'<sup>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<tt>': 
-            return {tag_name:'<tt>', 
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<u>':
-            return {tag_name:'<u>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<s>':
-            
-            return{tag_name:'<s>', 
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<small>':
-            return {
-                tag_name:'<small>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        
-        {/* Textes - sémantique */}
-        
-        case '<abbr>':
-            return {
-                tag_name:'<abbr>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<acronym>':
-            return {
-                tag_name:'<acronym>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<address>':
-            return {
-                tag_name:'<address>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<blockquote>':
-            return {
-                tag_name:'<blockquote>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<cite>':
-            return {
-                tag_name:'<cite>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<code>':
-            return {
-                tag_name:'<code>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<del>':
-            return {
-                tag_name:'<del>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<dfn>':
-            return {
-                tag_name:'<dfn>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<em>':
-            return {tag_name:'<em>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<h1>':
-            return {tag_name:'<h1>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<h2>':
-            return {tag_name:'<h2>',
-                self_closing:true,
-                type:'structure'
-            }              
-        break;
-        case '<h3>':
-            return {tag_name:'<h3>',
-                self_closing:true,
-                type:'structure'
-            }              
-        break;
-        case '<h4>':
-            return {tag_name:'<h4>',
-                self_closing:true,
-                type:'structure'
-            }              
-        break;
-        case '<h5>':
-            return {tag_name:'<h5>',
-                self_closing:true,
-                type:'structure'
-            }              
-        break;
-        case '<h6>':
-            
-                return {tag_name:'<h6>',
-                self_closing:true,
-                type:'structure'
-            }              
-        break;
-        case '<ins>':
-            return {
-                tag_name:'<ins>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<kbd>':
-            return {
-                tag_name:'<kbd>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<p>':                
-                return { tag_name:'<p>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<pre>':
-            return {
-                tag_name:'<pre>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<q>':
-            return {tag_name:'<q>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<rp>':
-            return {tag_name:'<rp>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<rt>':
-            return {tag_name:'<rt>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<ruby>':
-            return {
-                tag_name:'<ruby>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<samp>':
-            return {
-                tag_name:'<samp>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<strong>':
-            return {
-                tag_name:'<strong>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<time>':
-            return {
-                tag_name:'<time>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        case '<var>':
-            return {
-                tag_name:'<var>',
-                self_closing:true,
-                type:'structure'
-            }              
-            break;
-        default:
-                return {
-                    tag_name:null,
-                    self_closing:null,
-                    type:'UNKNOW'
-                }     
-            break;
-        }
+    getData(){
+        return this.tag_container;
     }
 }
 class Object{
