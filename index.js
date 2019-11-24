@@ -14,12 +14,12 @@ class htmlString{
             commentaire:null,
             script:null,
             style:null,
+            tag:null,
         }
     }
     // Cut every single pieces of the html doc 
     
     htmlSplitter(html){
-        var index = 0, container = [];
         // Comment Detection 
         var detectionComment = new Promise((resolve,reject)=>{            
             var start_com = [], last_one = 0, comments_elements = []
@@ -106,91 +106,111 @@ class htmlString{
         })
         // Balise Detection 
         var detectionBalise = new Promise((resolve,reject)=>{
-            fs.writeFile('base.txt',this.html_copie,(err)=>{
-                console.log(err);                
-            })
-            var tags = { open : [], close : [] }, count = 0;
+            var tags = { position_open : [], position_close : [], position_back_close : [], position_self_closing : [], position_closing_tag : [] }, count = 0;
             try {
                 // Number of opening bracket
-                while (html.indexOf('<',count) != -1) {
-                    var i = html.indexOf('<',count)
-                    tags.open.push(i)
+                while (this.html_copie.indexOf('<',count) != -1) {
+                    var i = this.html_copie.indexOf('<',count)
+                    tags.position_open.push(i)
                     count = i+1
                 }            
+                console.log(`OPENING TAGS < : ${tags.position_open.length}`);                                                
                 count = 0;       
                 // Number of closing bracket     
-                while (html.indexOf('>',count) != -1) {
-                    var i = html.indexOf('>',count)
-                    tags.close.push(i)
+                while (this.html_copie.indexOf('>',count) != -1) {
+                    var i = this.html_copie.indexOf('>',count)
+                    tags.position_close.push(i)
                     count = i+1
-                }                                                     
+                }   
+                console.log(`CLOSING TAGS > : ${tags.position_close.length}`);                                                
+                count = 0;
+                // Number of back slash 
+                while (this.html_copie.indexOf('/',count) != -1) {
+                    var i = this.html_copie.indexOf('/',count)
+                    tags.position_back_close.push(i)
+                    count = i+1
+                }   
+                console.log(`SELF CLOSING TAGS / : ${tags.position_back_close.length}`);                                                
+                count = 0;
+                // Number of self_closing tags
+                while (this.html_copie.indexOf('/>',count) != -1) {
+                    var i = this.html_copie.indexOf('/>',count)
+                    tags.position_self_closing.push(i)
+                    count = i+1
+                }     
+                count = 0;
+                console.log(`SELF CLOSING TAGS /> : ${tags.position_self_closing.length}`);                                                
+                // Number of closing tags
+                while (this.html_copie.indexOf('</',count) != -1) {
+                    var i = this.html_copie.indexOf('</',count)
+                    tags.position_closing_tag.push(i)
+                    count = i+2
+                }            
+                console.log(`CLOSING TAGS </ : ${tags.position_closing_tag.length}`);                                                
             } catch (error) {
                 console.log(error);                
-            }            
-            // Whats are beetween those tags ?
-            var ok = true, u = 0,founded_tags = [];
-            var l = 0
-            while (ok != false) {
-                var tag_temp = {
-                    start : tags.open[u],
-                    close : tags.close[u]+1,
-                    data : [],
-                    closing_tag : false,
-                    self_closing : false,
-                }
+            }                
+            // Next
+            var tag = {closing_tags:[],opening_tags:[],self_closing:[]}
+            var name = []
+            try {
+                // CLOSING TAGS => into  tag.closing_tags
+                for (let index = 0; index < tags.position_closing_tag.length; index++) {
+                    const open = tags.position_closing_tag[index];
+                    var close = this.html_copie.indexOf('>',open+2), sliced = this.html_copie.slice(open,close+1);
+                    tag.closing_tags.push({
+                        start:open,
+                        end:close+1,
+                        name:this.html_copie.slice(open+2,close),
+                        data:sliced
+                    })
+                    this.html_copie.replace(sliced,'')                    
+                }  
+                // console.log(tag.closing_tags.length);
                 
-                var tag = this.html_copie.slice(tags.open[u],tags.close[u]+1)           
-                // =======> Check if there is some data ?
-                if (tag.indexOf('=') != -1) {
-                    // search for some data
-                    var i = 0;
-                    while (tag.indexOf('=',i) != -1) {
-                        var l = 0,value = 0;
-                        while (tag.indexOf(' ',l) < tag.indexOf('=',i) && tag.indexOf(' ',l) != -1) {
-                            value = tag.indexOf(' ',l);
-                            l = value+1;
-                        }
-                        var data_inside = tag.slice(tag.indexOf('=',i)+1,tag.indexOf('=',i)+2);
-                        if (data_inside == '"' || data_inside == "'") {
-                            var end = '';
-                            // console.log(data_inside);
-                            
-                            if (data_inside == '"') {
-                                end = tag.indexOf('"',tag.indexOf('=',i)+2)
-                            }else{
-                                end = tag.indexOf("'",tag.indexOf('=',i)+2)
+                // OPENING TAGS 
+                var cont = 0;
+                for (let index = 0; index < tags.position_open.length; index++) {
+                    const open = tags.position_open[index];
+                    var close = tags.position_close[cont];
+                    if (this.html_copie.slice(open+1,open+2) == '/') {
+                        cont++;
+                        // console.log(cont);
+                    }else{
+                        // how many cut do i have ?
+                            // html.split('')
+                        while (tags.position_close[cont] < open) {
+                            cont++;
+                            close = tags.position_close[cont];
+                            if (close == undefined) {
+                                break;
                             }
-                            data_inside = tag.slice(tag.indexOf('=',i)+2,end);                            
+                        }                                
+                        if (this.html_copie.slice(close-1,close) == '/') {
+                            // SELF CLOSING TAG
+                            console.log('self');     
+                            tag.self_closing.push({
+                                start:open,
+                                end:close,
+                                name:this.html_copie.slice(open+1,close-1),
+                                data:this.html_copie.slice(open,close+1),
+                            })                       
+                            name.push(this.html_copie.slice(open,close+1))
+                        }else{
+                            tag.opening_tags.push({
+                                start:open,
+                                end:close,
+                                name:this.html_copie.slice(open+1,close-1),
+                                data:this.html_copie.slice(open,close+1),
+                            })
+                            name.push(this.html_copie.slice(open,close+1))
                         }
-                        tag_temp.data.push({
-                            name : tag.slice(value,tag.indexOf('=',i)),
-                            data : data_inside,
-                        })          
-                        i = tag.indexOf('=',i)+1;              
-                    }
-                }                                
-                // =======> Is it a closing tag ?                
-                if (this.html_copie.slice(tags.open[u]+1,tags.open[u]+2) == '/') tag_temp.closing_tag = true;
-                // ========> Self Closing Tag ?                
-                if (this.html_copie.slice(tags.close[u]-1,tags.close[u]) == '/') tag_temp.self_closing = true;;
-                // Restart ?
-                if (tags.open[u] == undefined) ok = false;
-                u++;
-                founded_tags.push(tag_temp);
+                    }                    
+                    // self closing =>  tags.position_back_close
+                }   
+            } catch (error) {
+                console.log(error);                
             }
-            var q = 0, couple = 0;
-            console.log(founded_tags[20].self_closing);  
-            while (founded_tags[q] != undefined) {
-                q++;
-            }
-                            
-            // Delete the content founded from the html document
-            for (let index = 0; index < founded_tags.length; index++) {
-                var tag = this.html_copie.slice(founded_tags[index].start,founded_tags[index].close)                           
-                this.html_copie = this.html_copie.replace(tag,'')
-            }            
-            fs.writeFile('o.txt',JSON.stringify(founded_tags),()=>{})
-            resolve({data:founded_tags});
         })
         // EXECUTION LIST ORDER
         detectionComment.then(
@@ -201,9 +221,7 @@ class htmlString{
                     detectionStyle.then((response)=>{
                         this.data.style = response;        
                         detectionBalise.then((response)=>{       
-                            fs.writeFile('result.txt',this.html_copie,(err)=>{
-                                // console.log(err);                                
-                            })                    
+                            this.data.tag = response.data;
                         }).catch((error)=>{
                             console.log(error);                             
                         })
