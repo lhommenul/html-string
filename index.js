@@ -168,7 +168,8 @@ class htmlString{
                 }  
                 // console.log(tag.closing_tags.length);
                 
-                // OPENING TAGS 
+                // MAKE COUPLES OF CLOSING AND OPENING TAGS 
+                    // data generated => above => tag = closing_tags, opening_tags, self_closing 
                 var cont = 0;
                 for (let index = 0; index < tags.position_open.length; index++) {
                     const open = tags.position_open[index];
@@ -185,32 +186,69 @@ class htmlString{
                             if (close == undefined) {
                                 break;
                             }
-                        }                                
+                        }                          
+                        // Check how many splits there is beetween < and >
+                        function foundName(html_copie) {
+                            var y = html_copie.slice(open,close+1), split = y.split(' ');
+                            if (split.length >= 2) {                           
+                                return html_copie.slice(open+1,open+split[0].length);
+                            }else{
+                                return html_copie.slice(open+1,close-1);
+                            }     
+                        } 
+                        
                         if (this.html_copie.slice(close-1,close) == '/') {
                             // SELF CLOSING TAG
-                            console.log('self');     
                             tag.self_closing.push({
                                 start:open,
                                 end:close,
-                                name:this.html_copie.slice(open+1,close-1),
+                                name:foundName(this.html_copie),
                                 data:this.html_copie.slice(open,close+1),
                             })                       
-                            name.push(this.html_copie.slice(open,close+1))
+                            name.push(foundName(this.html_copie))
                         }else{
+                            // OPENING TAG                            
                             tag.opening_tags.push({
                                 start:open,
                                 end:close,
-                                name:this.html_copie.slice(open+1,close-1),
+                                name:foundName(this.html_copie),
                                 data:this.html_copie.slice(open,close+1),
                             })
-                            name.push(this.html_copie.slice(open,close+1))
+                            name.push(foundName(this.html_copie))
                         }
                     }                    
-                    // self closing =>  tags.position_back_close
-                }   
+                }
+                console.log(`Number of opening tags < > = ${tag.opening_tags.length}`);
+                console.log(`Number of closing tags </ > = ${tag.closing_tags.length}`);
+                console.log(`Number of self closing tags < /> = ${tag.self_closing.length}`);
+                console.log(`TOTAL = ${tag.opening_tags.length+tag.closing_tags.length+tag.self_closing.length}`);
+                // DELETE ALL COUPLES THATS SEEMS WRONG
+                var position = {closing:0,self_closing:0}, to_close = null, object = [];
+                for (let index = 0; index < tag.opening_tags.length; index++) {
+                    // < >
+                    const element = tag.opening_tags[index];
+                    // < />
+                    const self_closing = tag.self_closing[position.self_closing]
+                    // </ >
+                    const closing = tag.closing_tags[position.closing];
+                    if (element.start == self_closing.start){
+                        // this is a self_closing tag
+                        position.self_closing++;
+                    }else if (element.start == closing.start){
+                        // this is a closing tag                        
+                        position.closing++;
+                    }else{
+                        // this is an opening tag
+                        to_close = element.name;
+                    }
+                }
             } catch (error) {
                 console.log(error);                
             }
+            fs.writeFile('re.txt',JSON.stringify(name),(err)=>{
+                console.log(err);
+                
+            })
         })
         // EXECUTION LIST ORDER
         detectionComment.then(
@@ -237,27 +275,6 @@ class htmlString{
     }
     getData(){
         return this.tag_container;
-    }
-}
-class Object{
-    constructor(tag_name = String,tag_name_clear = String,tag_no_filter = String,tag_info = Object,tag_data = Array, children = Array){
-        this.tag_name = tag_name // <= exemple 'div , img , a , ul ,table ...'
-        this.tag_name_clear = tag_name_clear
-        this.tag_no_filter = tag_no_filter
-        this.tag_info = tag_info
-        // {
-        //     open : {
-        //         position_start : null, // <= '<', exemple position_start = 10 of the opening tag 
-        //         position_end : null // <= '>', exemple position_end = 13 of the opening tag 
-        //     },
-        //     close : {
-        //         position_start : null, // <= '>', exemple position_start = 13 of the closing tag 
-        //         position_end : null // <= '>', exemple position_end = 13 of the closing tag 
-        //     },
-        //     self_closing : true, // <= if the tag as only one balise or not
-        // }
-        this.tag_data = tag_data // <= src , href , name ... etc
-        this.children = children // <= every children witch he got 
     }
 }
 module.exports = htmlString;
